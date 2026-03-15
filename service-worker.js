@@ -1,0 +1,1 @@
+const CACHE_NAME='diario-trading-completo-v6';const URLS=['./','./index.html','./manifest.json','./service-worker.js','./icon-192.png','./icon-512.png'];self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE_NAME).then(c=>c.addAll(URLS)))});self.addEventListener('fetch',e=>{e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request)))})
