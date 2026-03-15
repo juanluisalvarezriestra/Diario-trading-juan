@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Diario de Trading Visual</title>
+  <meta name="theme-color" content="#06101f" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Diario Trading" />
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png" />
+  <style>
+    :root{
+      --bg:#06101f;--bg2:#08162b;--panel:#0d1b31;--panel-2:#0b1730;--line:#22314e;--text:#eef4ff;--muted:#9fb0cc;
+      --warn:#ffd166;--good:#7bffbf;--bad:#ff7b9c;--chip:#132643;--input:#f7fbff;--blue:#5ea8ff;--blue2:#3f85db;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;background:linear-gradient(180deg,var(--bg) 0%,var(--bg2) 100%);color:var(--text)}
+    .wrap{max-width:1280px;margin:0 auto;padding:20px}
+    h1{margin:0;font-size:32px}
+    .sub{color:var(--muted);margin-top:6px}
+    .topbar,.grid-2,.grid-3,.grid-4{display:grid;gap:16px}
+    .topbar{grid-template-columns:1fr auto;align-items:end;margin-bottom:18px}
+    .grid-4{grid-template-columns:repeat(4,1fr)} .grid-3{grid-template-columns:2fr 1fr 1fr} .grid-2{grid-template-columns:2fr 1fr}
+    .card{background:linear-gradient(180deg,var(--panel) 0%,var(--panel-2) 100%);border:1px solid var(--line);border-radius:24px;padding:18px;box-shadow:0 10px 30px rgba(0,0,0,.18)}
+    .metric .label{color:var(--muted);font-size:14px}.metric .value{font-size:30px;font-weight:700;margin-top:6px}
+    .tabs,.filters,.toggle-row,.action-row,.pill-row{display:flex;gap:10px;flex-wrap:wrap}
+    .btn,.tab,.toggle-btn,.pill{border:none;border-radius:16px;padding:12px 16px;background:#13233f;color:var(--text);cursor:pointer;font-weight:700}
+    .tab.active,.btn.primary,.toggle-btn.active,.pill.active{background:linear-gradient(180deg,var(--blue),var(--blue2))}
+    .btn.secondary{background:#113457}.btn.ghost{background:#13233f}
+    .section-title{font-size:14px;letter-spacing:.18em;text-transform:uppercase;color:#a9c8ff;margin:0 0 14px;font-weight:800}
+    .form-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+    .field{display:flex;flex-direction:column;gap:7px}.field.full{grid-column:1 / -1}
+    label{font-size:14px;font-weight:700}.hint{font-size:12px;color:var(--muted)}
+    input,select,textarea{width:100%;border:none;border-radius:14px;padding:14px;background:var(--input);color:#0d1b31;font-size:16px}
+    textarea{min-height:120px;resize:vertical}
+    .small-metrics{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+    .mini{background:#081223;border:1px solid var(--line);border-radius:18px;padding:14px}
+    .mini .k{font-size:13px;color:var(--muted)}.mini .v{font-size:26px;font-weight:800;margin-top:4px}
+    .quick{font-size:14px}.quick .row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06)}.quick .row:last-child{border-bottom:none}
+    .tabs-panel{margin-top:18px}.hidden,.soft-hidden{display:none}
+    .history{display:flex;flex-direction:column;gap:12px}
+    .trade{border:1px solid var(--line);border-radius:20px;padding:16px;background:#091425}
+    .trade-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap}
+    .badges{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+    .badge{padding:6px 10px;border-radius:999px;background:var(--chip);color:#d6e5ff;font-size:12px;font-weight:700;border:1px solid #27466d}
+    .trade-notes{margin-top:12px;color:var(--muted);font-size:14px}
+    .good{color:var(--good)!important}.bad{color:var(--bad)!important}.muted{color:var(--muted)}
+    .chart-box{height:280px}.legend{font-size:12px;color:var(--muted);margin-top:8px}
+    .rowline{display:flex;gap:12px;flex-wrap:wrap;align-items:center}.spacer{flex:1}
+    .ticker-btn{background:none;border:none;color:#6fb3ff;text-decoration:underline;cursor:pointer;font-size:22px;font-weight:800;padding:0}
+    .pill.small,.btn.small{padding:8px 12px;border-radius:12px;font-size:13px}
+    .edit-banner{background:#173258;border:1px solid #305b96;border-radius:16px;padding:10px 14px;margin-bottom:14px}
+    @media (max-width:980px){.grid-4,.grid-3,.grid-2,.form-grid{grid-template-columns:1fr}.topbar{grid-template-columns:1fr}.wrap{padding:14px}h1{font-size:26px}}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <div>
+      <h1>Diario de Trading Visual</h1>
+      <div class="sub">Capital automático por acciones × precio. Riesgo real según stop y cantidad.</div>
+    </div>
+    <div class="filters">
+      <button class="tab active" data-filter="todos">Todo</button>
+      <button class="tab" data-filter="semana">Semana</button>
+      <button class="tab" data-filter="mes">Mes</button>
+    </div>
+  </div>
+
+  <div class="grid-4">
+    <div class="card metric"><div class="label">Operaciones</div><div id="mOperaciones" class="value">0</div></div>
+    <div class="card metric"><div class="label">Resultado EUR</div><div id="mResultadoEUR" class="value">0 €</div></div>
+    <div class="card metric"><div class="label">Resultado USD</div><div id="mResultadoUSD" class="value">0 $</div></div>
+    <div class="card metric"><div class="label">Win rate</div><div id="mWinRate" class="value">0%</div></div>
+  </div>
+
+  <div class="tabs tabs-panel">
+    <button class="tab active" data-view="nuevo">Nueva operación</button>
+    <button class="tab" data-view="panel">Panel visual</button>
+    <button class="tab" data-view="historial">Historial</button>
+  </div>
+
+  <div id="view-nuevo" class="view">
+    <div class="grid-2" style="margin-top:16px;">
+      <div class="card">
+        <div id="editBanner" class="edit-banner hidden">
+          Estás editando una operación.
+          <button class="btn small ghost" type="button" onclick="cancelarEdicion()">Cancelar edición</button>
+        </div>
+
+        <div class="section-title">Operación</div>
+        <div class="field" style="margin-bottom:14px;">
+          <label>Estado de la operación</label>
+          <div class="toggle-row">
+            <button class="toggle-btn active" data-estado="abierta" type="button">Abierta</button>
+            <button class="toggle-btn" data-estado="parcial" type="button">Parcial</button>
+            <button class="toggle-btn" data-estado="cerrada" type="button">Cerrada</button>
+          </div>
+          <div class="hint">Abierta: solo compra. Parcial/Cerrada: con venta.</div>
+        </div>
+
+        <div class="form-grid">
+          <div class="field"><label>Fecha</label><input id="fecha" type="date"></div>
+          <div class="field"><label>Instrumento</label><input id="instrumento" placeholder="Ej: NVDA"></div>
+          <div class="field"><label>Dirección</label><select id="direccion"><option>Largo</option><option>Corto</option></select></div>
+          <div class="field"><label>Moneda</label><select id="moneda"><option value="EUR">EUR</option><option value="USD" selected>USD</option></select></div>
+          <div class="field"><label>Precio de compra / entrada (por acción)</label><input id="entrada" type="number" step="0.0001" placeholder="Precio al abrir"></div>
+          <div class="field"><label>Cantidad comprada</label><input id="cantidadCompra" type="number" step="0.0001" placeholder="Acciones o contratos"></div>
+          <div class="field"><label>Capital invertido (solo si no pones cantidad)</label><input id="capital" type="number" step="0.01" value=""></div>
+          <div class="field"><label>Stop loss (opcional)</label><input id="stop" type="number" step="0.0001" placeholder="Nivel de stop"></div>
+          <div class="field full"><label>Motivo de entrada</label><select id="motivoEntrada"><option>Ruptura</option><option>Pullback</option><option>Añadir posición</option><option>Promediar</option><option>Rebote en soporte</option><option>Giro de tendencia</option><option>Otra</option></select></div>
+        </div>
+
+        <div class="section-title" style="margin-top:22px;color:#ffd79a;">Salida</div>
+        <div class="form-grid">
+          <div class="field"><label>Take profit (opcional)</label><input id="takeProfit" type="number" step="0.0001" placeholder="Objetivo previsto"></div>
+          <div id="bloque-venta-cantidad" class="field"><label>Cantidad vendida</label><input id="cantidadSalida" type="number" step="0.0001" placeholder="Acciones que vendiste"></div>
+          <div id="bloque-venta-precio" class="field full"><label>Precio de venta (por acción)</label><input id="salida" type="number" step="0.0001" placeholder="Precio real de venta"></div>
+        </div>
+
+        <div class="section-title" style="margin-top:22px;color:#d8b3ff;">Motivos y notas</div>
+        <div class="form-grid">
+          <div class="field"><label>Motivo de salida</label><select id="motivoSalida"><option>Sin salida aún</option><option>Take profit</option><option>Stop loss</option><option>Salida manual</option><option>Reducción de riesgo</option><option>Cierre parcial</option><option>Cambio de escenario</option><option>Otra</option></select></div>
+          <div class="field"><label>Riesgo elegido</label><div class="pill-row"><button class="pill small" data-risk="1" type="button">1%</button><button class="pill small active" data-risk="2" type="button">2%</button><button class="pill small" data-risk="3" type="button">3%</button></div></div>
+          <div class="field full"><label>Notas</label><textarea id="notas" placeholder="Qué viste, por qué entraste, qué salió bien o mal..."></textarea></div>
+        </div>
+
+        <div class="rowline" style="margin-top:16px;">
+          <button id="guardar" class="btn primary" type="button">Guardar operación</button>
+          <button id="limpiar" class="btn ghost" type="button">Limpiar formulario</button>
+          <div class="spacer"></div>
+          <button id="exportar" class="btn secondary" type="button">Exportar JSON</button>
+          <label class="btn ghost" for="importar" style="display:inline-block;">Importar JSON</label>
+          <input id="importar" type="file" accept=".json" style="display:none">
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="section-title">Cálculo visual del riesgo</div>
+        <div class="small-metrics">
+          <div class="mini"><div class="k">Capital calculado</div><div id="vCapital" class="v">0 €</div></div>
+          <div class="mini"><div class="k">Riesgo permitido</div><div id="vRiesgo" class="v" style="color:var(--warn)">0 €</div></div>
+          <div class="mini"><div class="k">Riesgo real</div><div id="vRiesgoReal" class="v" style="color:var(--bad)">—</div></div>
+          <div class="mini"><div class="k">Resultado estimado</div><div id="vResultado" class="v" style="color:var(--good)">—</div></div>
+        </div>
+
+        <div class="card" style="margin-top:16px;padding:14px;border-radius:18px;background:#081223">
+          <div class="section-title" style="margin-bottom:8px">Vista rápida</div>
+          <div class="quick">
+            <div class="row"><span class="muted">Estado</span><strong id="qEstado">Abierta</strong></div>
+            <div class="row"><span class="muted">Instrumento</span><strong id="qInstrumento">—</strong></div>
+            <div class="row"><span class="muted">Dirección</span><strong id="qDireccion">Largo</strong></div>
+            <div class="row"><span class="muted">Moneda</span><strong id="qMoneda">USD</strong></div>
+            <div class="row"><span class="muted">Compra</span><strong id="qEntrada">—</strong></div>
+            <div class="row"><span class="muted">Stop</span><strong id="qStop">—</strong></div>
+            <div class="row"><span class="muted">Take profit</span><strong id="qTP">—</strong></div>
+            <div class="row"><span class="muted">Cantidad comprada</span><strong id="qCantidadCompra">—</strong></div>
+            <div class="row"><span class="muted">Cantidad vendida</span><strong id="qCantidadSalida">—</strong></div>
+            <div class="row"><span class="muted">Venta</span><strong id="qSalida">—</strong></div>
+            <div class="row"><span class="muted">Motivo</span><strong id="qMotivo">Ruptura</strong></div>
+          </div>
+        </div>
+
+        <div class="legend">Si pones cantidad, el capital se calcula solo. Si no pones cantidad, usa el capital manual para estimarla.</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="view-panel" class="view hidden">
+    <div class="grid-3" style="margin-top:16px;">
+      <div class="card"><div class="section-title">Curva de capital</div><div id="equityChart" class="chart-box"></div></div>
+      <div class="card">
+        <div class="section-title">Balance rápido</div>
+        <div class="mini"><div class="k">Ganadoras</div><div id="bGanadoras" class="v good">0</div></div>
+        <div class="mini" style="margin-top:12px"><div class="k">Perdedoras</div><div id="bPerdedoras" class="v bad">0</div></div>
+        <div class="mini" style="margin-top:12px"><div class="k">EUR</div><div id="bResultadoEUR" class="v">0 €</div></div>
+        <div class="mini" style="margin-top:12px"><div class="k">USD</div><div id="bResultadoUSD" class="v">0 $</div></div>
+      </div>
+      <div class="card"><div class="section-title">Motivos más usados</div><div id="motivosChart"></div></div>
+    </div>
+  </div>
+
+  <div id="view-historial" class="view hidden">
+    <div class="card" style="margin-top:16px;">
+      <div class="section-title">Historial de operaciones</div>
+      <div id="history" class="history"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+if ('serviceWorker' in navigator) window.addEventListener('load',()=>navigator.serviceWorker.register('./service-worker.js'));
+
+function hoyISO(offsetDays=0){ const d=new Date(); d.setDate(d.getDate()+offsetDays); return d.toISOString().slice(0,10); }
+const KEY='diario_trading_visual_completo_v6';
+let filtro='todos', vista='nuevo', riesgoPct=2, estadoOperacion='abierta', editingId=null;
+let trades=load();
+
+function load(){ const raw=localStorage.getItem(KEY); if(!raw) return []; try{return JSON.parse(raw)}catch{return []} }
+function save(){ localStorage.setItem(KEY, JSON.stringify(trades)); render(); }
+function money(n,m){ return new Intl.NumberFormat('es-ES',{style:'currency',currency:m==='EUR'?'EUR':'USD'}).format(Number(n||0)); }
+function num(v){ return Number(v||0); }
+function esc(s){ return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+function fmtNum(n){ return n ? new Intl.NumberFormat('es-ES',{maximumFractionDigits:4}).format(Number(n)) : '—'; }
+
+function cantidadComprada(t){
+  if(num(t.cantidadCompra)>0) return num(t.cantidadCompra);
+  return (num(t.entrada)>0 && num(t.capital)>0) ? (num(t.capital)/num(t.entrada)) : 0;
+}
+function capitalCalculado(t){
+  const qty = cantidadComprada(t);
+  if(qty>0 && num(t.entrada)>0) return qty * num(t.entrada);
+  return num(t.capital) || 0;
+}
+function cantidadVendida(t){
+  const base=cantidadComprada(t);
+  return num(t.cantidadSalida)>0 ? num(t.cantidadSalida) : ((t.estado||'abierta')==='cerrada' ? base : 0);
+}
+function resultadoTrade(t){
+  if((t.estado||'abierta')==='abierta') return 0;
+  const qty=cantidadVendida(t);
+  if(!qty || !num(t.entrada) || !num(t.salida)) return 0;
+  const bruto=t.direccion==='Largo' ? (num(t.salida)-num(t.entrada))*qty : (num(t.entrada)-num(t.salida))*qty;
+  return Number(bruto.toFixed(2));
+}
+function riesgoRealTrade(t){
+  const qty=cantidadComprada(t);
+  if(!qty || !num(t.entrada) || !num(t.stop)) return 0;
+  const diff = Math.abs(num(t.entrada)-num(t.stop));
+  return Number((diff*qty).toFixed(2));
+}
+function resultadoObjetivoTrade(t){
+  const qty=cantidadComprada(t);
+  if(!qty || !num(t.entrada) || !num(t.takeProfit)) return 0;
+  const bruto=t.direccion==='Largo' ? (num(t.takeProfit)-num(t.entrada))*qty : (num(t.entrada)-num(t.takeProfit))*qty;
+  return Number(bruto.toFixed(2));
+}
+function sameWeek(iso){ const d=new Date(iso+'T00:00:00'); const now=new Date(); const day=(now.getDay()+6)%7; const start=new Date(now); start.setDate(now.getDate()-day); start.setHours(0,0,0,0); return d>=start && d<=now; }
+function filtered(){ if(filtro==='semana') return trades.filter(t=>sameWeek(t.fecha)); if(filtro==='mes'){ const ym=(new Date()).toISOString().slice(0,7); return trades.filter(t=>(t.fecha||'').startsWith(ym)); } return [...trades]; }
+
+function summary(list){
+  const cerradas=list.filter(t=>(t.estado||'abierta')!=='abierta');
+  const results=cerradas.map(t=>({moneda:t.moneda||'USD', valor:resultadoTrade(t)}));
+  return {
+    eur: results.filter(x=>x.moneda==='EUR').reduce((a,b)=>a+b.valor,0),
+    usd: results.filter(x=>x.moneda!=='EUR').reduce((a,b)=>a+b.valor,0),
+    ganadoras: results.filter(x=>x.valor>0).length,
+    perdedoras: results.filter(x=>x.valor<0).length,
+    winRate: cerradas.length ? Math.round((results.filter(x=>x.valor>0).length/cerradas.length)*100) : 0,
+    operaciones: list.length
+  };
+}
+function setText(id,v){ document.getElementById(id).textContent=v; }
+
+function applyEstadoUI(){
+  document.querySelectorAll('.toggle-btn').forEach(btn=>btn.classList.toggle('active', btn.dataset.estado===estadoOperacion));
+  const showSale=estadoOperacion!=='abierta';
+  document.getElementById('bloque-venta-cantidad').classList.toggle('soft-hidden', !showSale);
+  document.getElementById('bloque-venta-precio').classList.toggle('soft-hidden', !showSale);
+  const motivo=document.getElementById('motivoSalida');
+  if(estadoOperacion==='abierta') motivo.value='Sin salida aún';
+  else if(estadoOperacion==='parcial' && motivo.value==='Sin salida aún') motivo.value='Cierre parcial';
+  else if(estadoOperacion==='cerrada' && motivo.value==='Sin salida aún') motivo.value='Take profit';
+  updatePreview();
+}
+
+function bindForm(){
+  document.getElementById('fecha').value=hoyISO();
+  ['instrumento','direccion','moneda','capital','cantidadCompra','entrada','stop','takeProfit','cantidadSalida','salida','motivoEntrada','motivoSalida','notas'].forEach(id=>{
+    document.getElementById(id).addEventListener('input', updatePreview);
+    document.getElementById(id).addEventListener('change', updatePreview);
+  });
+  document.querySelectorAll('.pill').forEach(btn=>btn.addEventListener('click',()=>{
+    document.querySelectorAll('.pill').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active'); riesgoPct=Number(btn.dataset.risk); updatePreview();
+  }));
+  document.querySelectorAll('.toggle-btn').forEach(btn=>btn.addEventListener('click',()=>{ estadoOperacion=btn.dataset.estado; applyEstadoUI(); }));
+  applyEstadoUI(); updatePreview();
+}
+
+function formData(){
+  return {
+    id: editingId || Date.now(),
+    estado: estadoOperacion,
+    fecha: document.getElementById('fecha').value || hoyISO(),
+    instrumento: document.getElementById('instrumento').value.trim().toUpperCase(),
+    direccion: document.getElementById('direccion').value,
+    moneda: document.getElementById('moneda').value,
+    entrada: num(document.getElementById('entrada').value),
+    salida: num(document.getElementById('salida').value),
+    cantidadCompra: num(document.getElementById('cantidadCompra').value),
+    cantidadSalida: num(document.getElementById('cantidadSalida').value),
+    capital: num(document.getElementById('capital').value),
+    stop: num(document.getElementById('stop').value),
+    takeProfit: num(document.getElementById('takeProfit').value),
+    motivoEntrada: document.getElementById('motivoEntrada').value,
+    motivoSalida: document.getElementById('motivoSalida').value,
+    notas: document.getElementById('notas').value.trim()
+  };
+}
+
+function updatePreview(){
+  const f=formData();
+  const capital=capitalCalculado(f);
+  const riesgoPermitido=capital*(riesgoPct/100);
+  const riesgoReal=riesgoRealTrade(f);
+  const resultadoObjetivo=resultadoObjetivoTrade(f);
+
+  setText('vCapital', money(capital, f.moneda));
+  setText('vRiesgo', money(riesgoPermitido, f.moneda));
+  setText('vRiesgoReal', riesgoReal ? money(riesgoReal, f.moneda) : '—');
+  setText('vResultado', resultadoObjetivo ? money(resultadoObjetivo, f.moneda) : '—');
+
+  setText('qEstado', f.estado.charAt(0).toUpperCase()+f.estado.slice(1));
+  setText('qInstrumento', f.instrumento || '—');
+  setText('qDireccion', f.direccion || '—');
+  setText('qMoneda', f.moneda || '—');
+  setText('qEntrada', f.entrada || '—');
+  setText('qStop', f.stop || '—');
+  setText('qTP', f.takeProfit || '—');
+  setText('qCantidadCompra', cantidadComprada(f) ? fmtNum(cantidadComprada(f)) : '—');
+  setText('qCantidadSalida', f.estado==='abierta' ? '—' : (f.cantidadSalida || '—'));
+  setText('qSalida', f.estado==='abierta' ? '—' : (f.salida || '—'));
+  setText('qMotivo', f.motivoEntrada || '—');
+}
+
+function limpiarFormularioBase(){
+  document.getElementById('fecha').value=hoyISO();
+  document.getElementById('instrumento').value='';
+  document.getElementById('direccion').value='Largo';
+  document.getElementById('moneda').value='USD';
+  document.getElementById('entrada').value='';
+  document.getElementById('salida').value='';
+  document.getElementById('cantidadCompra').value='';
+  document.getElementById('cantidadSalida').value='';
+  document.getElementById('capital').value='';
+  document.getElementById('stop').value='';
+  document.getElementById('takeProfit').value='';
+  document.getElementById('motivoEntrada').value='Ruptura';
+  document.getElementById('motivoSalida').value='Sin salida aún';
+  document.getElementById('notas').value='';
+}
+function cancelarEdicion(){
+  editingId=null;
+  document.getElementById('editBanner').classList.add('hidden');
+  document.getElementById('guardar').textContent='Guardar operación';
+  estadoOperacion='abierta';
+  limpiarFormularioBase();
+  applyEstadoUI();
+  updatePreview();
+}
+function limpiar(){ cancelarEdicion(); }
+
+function guardar(){
+  const f=formData();
+  if(!f.instrumento || !f.entrada){ alert('Rellena al menos: instrumento y precio de compra.'); return; }
+  if(f.estado!=='abierta' && !f.salida){ alert('Si la operación está parcial o cerrada, debes indicar el precio de venta.'); return; }
+  if(!f.cantidadCompra && !f.capital){ alert('Pon cantidad comprada o capital invertido.'); return; }
+  const idx=trades.findIndex(t=>t.id===f.id);
+  if(idx>=0) trades[idx]=f; else trades.unshift(f);
+  save(); cancelarEdicion(); alert('Operación guardada.');
+}
+function borrar(id){ if(!confirm('¿Borrar operación?')) return; trades=trades.filter(t=>t.id!==id); save(); }
+function editar(id){
+  const t=trades.find(x=>x.id===id); if(!t) return;
+  editingId=id; document.getElementById('editBanner').classList.remove('hidden'); document.getElementById('guardar').textContent='Guardar cambios';
+  estadoOperacion=t.estado||'abierta';
+  document.getElementById('fecha').value=t.fecha||hoyISO();
+  document.getElementById('instrumento').value=t.instrumento||'';
+  document.getElementById('direccion').value=t.direccion||'Largo';
+  document.getElementById('moneda').value=t.moneda||'USD';
+  document.getElementById('entrada').value=t.entrada||'';
+  document.getElementById('salida').value=t.salida||'';
+  document.getElementById('cantidadCompra').value=t.cantidadCompra||'';
+  document.getElementById('cantidadSalida').value=t.cantidadSalida||'';
+  document.getElementById('capital').value=t.capital||'';
+  document.getElementById('stop').value=t.stop||'';
+  document.getElementById('takeProfit').value=t.takeProfit||'';
+  document.getElementById('motivoEntrada').value=t.motivoEntrada||'Ruptura';
+  document.getElementById('motivoSalida').value=t.motivoSalida||'Sin salida aún';
+  document.getElementById('notas').value=t.notas||'';
+  applyEstadoUI(); updatePreview();
+  vista='nuevo';
+  document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('active', b.dataset.view===vista));
+  document.querySelectorAll('.view').forEach(v=>v.classList.add('hidden'));
+  document.getElementById('view-nuevo').classList.remove('hidden');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function cerrarOperacion(id){ const t=trades.find(x=>x.id===id); if(!t) return; editar(id); estadoOperacion='cerrada'; document.getElementById('motivoSalida').value='Take profit'; applyEstadoUI(); }
+function copiarTicker(sym){ if(!sym) return; navigator.clipboard?.writeText(sym).then(()=>alert('Ticker copiado: '+sym)).catch(()=>alert('Ticker: '+sym)); }
+function exportar(){ const blob=new Blob([JSON.stringify(trades,null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='diario-trading.json'; a.click(); URL.revokeObjectURL(a.href); }
+function importar(file){ const reader=new FileReader(); reader.onload=()=>{ try{ const parsed=JSON.parse(reader.result); if(!Array.isArray(parsed)) throw new Error(); trades=parsed; save(); alert('Datos importados correctamente.'); } catch{ alert('El archivo no es válido.'); } }; reader.readAsText(file); }
+
+function renderMetrics(list){
+  const s=summary(list);
+  setText('mOperaciones',s.operaciones); setText('mResultadoEUR',money(s.eur,'EUR')); setText('mResultadoUSD',money(s.usd,'USD')); setText('mWinRate',s.winRate+'%');
+  setText('bGanadoras',s.ganadoras); setText('bPerdedoras',s.perdedoras); setText('bResultadoEUR',money(s.eur,'EUR')); setText('bResultadoUSD',money(s.usd,'USD'));
+}
+function renderHistory(list){
+  const box=document.getElementById('history');
+  if(!list.length){ box.innerHTML='<div class="muted">No hay operaciones en este filtro.</div>'; return; }
+  box.innerHTML=list.map(t=>{
+    const r=resultadoTrade(t), qtyBuy=cantidadComprada(t), qtySell=cantidadVendida(t), mon=t.moneda||'USD', estado=t.estado||'abierta';
+    return `<div class="trade">
+      <div class="trade-top">
+        <div>
+          <button class="ticker-btn" type="button" onclick="copiarTicker('${esc(t.instrumento||'')}')">${esc(t.instrumento||'—')}</button>
+          <div class="badges">
+            <span class="badge">${esc(t.direccion)}</span>
+            <span class="badge">${esc(t.fecha||'—')}</span>
+            <span class="badge">${esc(mon)}</span>
+            <span class="badge">Estado: ${esc(estado)}</span>
+            <span class="badge">Compra: ${fmtNum(t.entrada)}</span>
+            <span class="badge">Cantidad comprada: ${fmtNum(qtyBuy)}</span>
+            ${estado!=='abierta' ? `<span class="badge">Venta: ${fmtNum(t.salida)}</span><span class="badge">Cantidad vendida: ${fmtNum(qtySell)}</span>` : ''}
+          </div>
+        </div>
+        <div class="${r>=0?'good':'bad'}" style="font-size:28px;font-weight:900">${estado==='abierta' ? 'Abierta' : (r>=0?'+':'')+money(r,mon)}</div>
+      </div>
+      <div class="badges" style="margin-top:12px">
+        <span class="badge">Motivo entrada: ${esc(t.motivoEntrada||'—')}</span>
+        <span class="badge">Motivo salida: ${esc(t.motivoSalida||'—')}</span>
+        <span class="badge">Capital: ${money(capitalCalculado(t),mon)}</span>
+        <span class="badge">Stop: ${fmtNum(t.stop)}</span>
+        <span class="badge">TP: ${fmtNum(t.takeProfit)}</span>
+        <span class="badge">Riesgo real: ${riesgoRealTrade(t) ? money(riesgoRealTrade(t),mon) : '—'}</span>
+      </div>
+      <div class="trade-notes">${esc(t.notas||'Sin notas')}</div>
+      <div class="action-row" style="margin-top:12px">
+        ${estado==='abierta' ? `<button class="btn small primary" type="button" onclick="cerrarOperacion(${t.id})">Cerrar</button>` : ''}
+        <button class="btn small ghost" type="button" onclick="editar(${t.id})">Editar</button>
+        <button class="btn small secondary" type="button" onclick="borrar(${t.id})">Borrar</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+function renderEquity(list){
+  const box=document.getElementById('equityChart');
+  const cerradas=list.filter(t=>(t.estado||'abierta')!=='abierta');
+  if(!cerradas.length){ box.innerHTML='<div class="muted">No hay operaciones cerradas para la curva de capital.</div>'; return; }
+  let acc=0;
+  const data=cerradas.slice().reverse().map(t=>{ acc+=resultadoTrade(t); return {x:t.fecha.slice(5), y:acc}; });
+  const w=box.clientWidth||700, h=260, pad=28;
+  const ys=data.map(d=>d.y); let min=Math.min(...ys), max=Math.max(...ys); if(min===max){min-=1; max+=1;}
+  const x=i=>pad + i*((w-pad*2)/Math.max(1,data.length-1)); const y=v=>h-pad - ((v-min)*((h-pad*2)/(max-min)));
+  const pts=data.map((d,i)=>`${x(i)},${y(d.y)}`).join(' ');
+  box.innerHTML=`<svg width="100%" height="${h}" viewBox="0 0 ${w} ${h}"><line x1="${pad}" y1="${pad}" x2="${pad}" y2="${h-pad}" stroke="#334766"/><line x1="${pad}" y1="${h-pad}" x2="${w-pad}" y2="${h-pad}" stroke="#334766"/><polyline fill="none" stroke="#7bffbf" stroke-width="4" points="${pts}" />${data.map((d,i)=>`<circle cx="${x(i)}" cy="${y(d.y)}" r="3.5" fill="#5ea8ff"/>`).join('')}</svg><div class="legend">La curva usa solo operaciones parciales o cerradas. Las abiertas no entran todavía.</div>`;
+}
+function renderMotivos(list){
+  const box=document.getElementById('motivosChart');
+  if(!list.length){ box.innerHTML='<div class="muted">No hay datos de motivos.</div>'; return; }
+  const map={}; list.forEach(t=>map[t.motivoEntrada]=(map[t.motivoEntrada]||0)+1);
+  const items=Object.entries(map).sort((a,b)=>b[1]-a[1]); const max=Math.max(...items.map(x=>x[1]));
+  box.innerHTML=items.map(([k,v])=>`<div style="margin-bottom:12px"><div class="rowline"><strong>${esc(k)}</strong><span class="spacer"></span><span class="muted">${v}</span></div><div style="height:12px;background:#0a1528;border-radius:999px;overflow:hidden;border:1px solid #22314e;margin-top:6px"><div style="width:${(v/max)*100}%;height:100%;background:linear-gradient(90deg,#5ea8ff,#7bffbf)"></div></div></div>`).join('');
+}
+function render(){ const list=filtered(); renderMetrics(list); renderHistory(list); renderEquity(list); renderMotivos(list); }
+function bindTabs(){
+  document.querySelectorAll('[data-view]').forEach(btn=>btn.addEventListener('click',()=>{ vista=btn.dataset.view; document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===vista)); document.querySelectorAll('.view').forEach(v=>v.classList.add('hidden')); document.getElementById('view-'+vista).classList.remove('hidden'); if(vista==='panel') render(); }));
+  document.querySelectorAll('[data-filter]').forEach(btn=>btn.addEventListener('click',()=>{ filtro=btn.dataset.filter; document.querySelectorAll('[data-filter]').forEach(b=>b.classList.toggle('active',b.dataset.filter===filtro)); render(); }));
+}
+bindTabs(); bindForm(); render();
+document.getElementById('guardar').addEventListener('click', guardar);
+document.getElementById('limpiar').addEventListener('click', limpiar);
+document.getElementById('exportar').addEventListener('click', exportar);
+document.getElementById('importar').addEventListener('change', e=>{ if(e.target.files&&e.target.files[0]) importar(e.target.files[0]); e.target.value=''; });
+window.addEventListener('resize', ()=>{ if(vista==='panel') renderEquity(filtered()); });
+</script>
+</body>
+</html>
