@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Diario de Trading</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0b1320">
+<link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+
+<h1>Diario de Trading</h1>
+
+<section class="panel">
+<h2>Nueva operación</h2>
+
+<input id="activo" placeholder="Activo">
+<input id="cantidad" type="number" placeholder="Cantidad">
+<input id="precioEntrada" type="number" step="0.01" placeholder="Precio entrada">
+<input id="precioActual" type="number" step="0.01" placeholder="Precio actual">
+<input id="stop" type="number" step="0.01" placeholder="Stop Loss">
+<input id="tp" type="number" step="0.01" placeholder="Take Profit">
+
+<button onclick="crearOperacion()">Añadir operación</button>
+</section>
+
+<section class="panel">
+<h2>Operaciones abiertas</h2>
+<table id="tablaAbiertas">
+<thead>
+<tr>
+<th>Activo</th>
+<th>Cantidad</th>
+<th>Entrada</th>
+<th>Actual</th>
+<th>Invertido</th>
+<th>P/L flotante</th>
+<th>Acciones</th>
+</tr>
+</thead>
+<tbody></tbody>
+</table>
+</section>
+
+<section class="panel">
+<h2>Operaciones cerradas</h2>
+<table id="tablaCerradas">
+<thead>
+<tr>
+<th>Activo</th>
+<th>Cantidad</th>
+<th>Entrada</th>
+<th>Salida</th>
+<th>P/L</th>
+<th>Motivo</th>
+</tr>
+</thead>
+<tbody></tbody>
+</table>
+</section>
+
+<script src="app.js"></script>
+
+</body>
+</html>
